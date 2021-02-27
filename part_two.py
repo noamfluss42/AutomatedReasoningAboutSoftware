@@ -20,7 +20,7 @@ def get_equation_and_predicates(formula: str) -> (list, list, list):
                 print("problem...")
             open_indx = open_brck.pop()
             for part in re.split("[&|]", formula[(open_indx + 1):i]):
-                if "=" in part:
+                if "=" in part or "<" in part or ">" in part:
                     equations.append(part)
                 elif "(" in part or ")" in part:
                     op_predicates.append(part)
@@ -35,6 +35,7 @@ def get_equation_and_predicates(formula: str) -> (list, list, list):
 
 def main():
     frml = "(w+q <= 4|(r(o)+3)=e)&(r(r(r(t))) = t)& (g(a) = c) & (f(g(a)) != f(c) | g(a) = d) & (c != d) & (p(a) | p(b)) & (p(a) | ^p(b))"
+    frml = "(x1+4x2<6)->(4x1+-6x3!=2x3)<-->(x1<4)"
     frml = frml.replace(" ", "")
     sub_frml, sub_prdc, args = get_equation_and_predicates(frml)
     print(frml)

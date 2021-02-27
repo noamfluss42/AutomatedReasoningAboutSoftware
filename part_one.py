@@ -310,7 +310,8 @@ def main():
 if __name__ == "__main__":
     #print(get_sub_formulas("2((3+5)+3.2f+(-53.2(-5s+4))-3d)+(3)", P="!",add_prefix="%"))
     #print(get_sub_formulas("", P="!"))
-    main()
+    #main()
+    print(get_sub_formulas("3&(^3|2&(9&4)|1)"))
 
 # cnf = [
 #     "x2|x3|^x4",

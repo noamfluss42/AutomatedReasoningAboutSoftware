@@ -2,18 +2,20 @@ import numpy as np
 import pprint
 import scipy.linalg
 from numpy.linalg import norm
-from LP.input_test import *
+from LP.LP_input_test import *
 
 
 class LPInput:
-    THREADHOLD_BASIS_REFACTORING = 10
-    EPSILON = 0.0000001
+    THREADHOLD_BASIS_REFACTORING = 50
+    EPSILON = 0.000001
 
     def __init__(self, A: np.array, b, c, start_feasible=False, use_bland_rule=True):
         """
         :param A: m rows and n columns
         :param b: size m - base size
         :param c: size n - non base size
+        :param start_feasible: if we start to check if the LP is feasible and this is the first iteration
+        :param use_bland_rule: to use bland rule or danzing rule
         """
         self.n = len(c)
         self.m = len(b)
@@ -37,8 +39,10 @@ class LPInput:
         self.P = np.eye(self.m)
         self.start_feasible = start_feasible
 
-    # TODO
     def check_feasible_solution(self):
+        """
+        :return: None if not feasible, and LP_input object if it is
+        """
         A_feasible = np.insert(self.An, 0, -1, axis=1)
         z = np.insert(np.zeros(self.n), 0, -1)
         feasible_lp = LPInput(A_feasible, self.xb_star, z, True)
@@ -49,9 +53,12 @@ class LPInput:
             return None
 
     def set_base_by_feasible(self, feasible_lp):
+        """
+        as we learn, we use the basis from the feasible solution as a start basis and the original max function
+        :param feasible_lp: when we check if there is a feasible solution we are using LP_input object
+        """
         feasible_lp_x0_index = np.argmin(feasible_lp.xn)
         self.An = np.delete(feasible_lp.An, feasible_lp_x0_index, 1)
-        # TODO b_original and B)
         self.B = feasible_lp.B  # B0 in using eta
         self.B0 = feasible_lp.B
         self.basis_refactoring()
@@ -81,12 +88,12 @@ class LPInput:
         self.xb = feasible_lp_xb
 
     def finish(self):
-        print("finish!!!")
+        # calc the max function result - the result of the LP
+        # the result is putting 0 in xn and xb* in xb
         self.result = np.dot(self.xb_star, self.cb)
         self.is_finish = True
 
     def unbounded(self):
-        print("unbounded!")
         self.is_finish = True
         self.result = np.inf
 
@@ -95,7 +102,6 @@ class LPInput:
         self.B0 = self.B
         self.eta_matrix = []
 
-    # TODO without copy
     def calc_BTRAN_eta(self, E, c, changed_col_index):
         res = c.copy()
         changed_col = E[:, changed_col_index].copy()
@@ -106,12 +112,19 @@ class LPInput:
         return res
 
     def calc_BTRAN_per(self, P, c):
+        """
+        calc BTRAN on permutation matrix
+        :param P: the permutation matrix
+        """
         res = np.empty(len(c))
         for i in range(len(P)):
             res[i] = c[np.argmax(P[i])]
         return res
 
     def calc_BTRAN_B0(self, c) -> np.array:
+        """
+        clac the BTRAN on the non eta matrix - the LU factorization of B0
+        """
         for col_index in range(self.m):
             E = np.eye(self.m)
             E[:, col_index] = self.U[:, col_index]
@@ -142,12 +155,19 @@ class LPInput:
         return res
 
     def calc_FTRAN_per(self, P, c):
+        """
+        calc FTRAN on permutation matrix
+        :param P: the permutation matrix
+        """
         res = np.empty(len(c))
         for i in range(len(P)):
             res[np.argmax(P[i])] = c[i]
         return res
 
     def calc_FTRAN_B0(self, c) -> np.array:
+        """
+        clac the FTRAN on the non eta matrix - the LU factorization of B0
+        """
         c = self.calc_FTRAN_per(self.P, c)
         for col_index in range(self.m):
             E = np.eye(self.m)
@@ -204,7 +224,6 @@ class LPInput:
             xb_star_div_d = self.xb_star / np.ma.masked_equal(self.d, 0)
         else:
             xb_star_div_d = self.xb_star / np.ma.masked_less_equal(self.d, 0)
-
         xb_star_div_d = np.ma.masked_less(xb_star_div_d, 0)
         if np.ma.flatnotmasked_edges(xb_star_div_d) is None:
             self.unbounded()
@@ -237,33 +256,17 @@ class LPInput:
         self.cn[self.entering_var_index_xn] = self.cb[self.leaving_var_index_xb]
         self.cb[self.leaving_var_index_xb] = temp_c_val
 
-    def print(self):
-        print("")
-        print("self.B")
-        pprint.pprint(self.B)
-        print("self.An")
-        pprint.pprint(self.An)
-        print("self.xb")
-        print(self.xb)
-        print("self.xn")
-        print(self.xn)
-        print("self.xb_star")
-        print(self.xb_star)
-        print("self.cb")
-        print(self.cb)
-        print("self.cn")
-        print(self.cn)
-
     def check_epsilon_close(self):
         if norm(np.dot(self.B, self.xb_star) - self.b_original) > LPInput.EPSILON:
             self.basis_refactoring()
 
     def solve(self):
         """
-        after init
-        self.m = number of base vars
-        self.n = number of non base vars = number of original vars
-        :return:
+            after init
+            self.m = number of base vars
+            self.n = number of non base vars = number of original vars
+            :return:
+                the result of the LP
         """
         if not self.start_feasible and not all(self.xb_star >= 0):
             feasible_lp = self.check_feasible_solution()
@@ -284,11 +287,9 @@ class LPInput:
             self.check_epsilon_close()
 
 
-
-print("start list",len(d_list))
-
-for d_index in range(len(d_list)):
-    print("\nstart",d_index + 1)
-    d = d_list[d_index]
-    a = LPInput(d[0], d[1], d[2],use_bland_rule=True)
-    print(a.solve())
+if __name__ == "__main__":
+    for d_index in range(len(d_list)):
+        print("\nstart", d_index + 1)
+        d = d_list[d_index]
+        a = LPInput(d[0], d[1], d[2], use_bland_rule=True)
+        print(a.solve())
